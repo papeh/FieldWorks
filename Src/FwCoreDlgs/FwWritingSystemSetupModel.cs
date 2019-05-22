@@ -165,7 +165,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			_currentWs = WorkingList.First().WorkingWs;
 			_listType = type;
 			_wsManager = wsManager;
-			CurrentWsSetupModel = new WritingSystemSetupModel(_currentWs);
+			SetCurrentWsSetupModel(_currentWs);
 			Cache = cache;
 			_mediator = mediator;
 			_wsContainer = container;
@@ -201,6 +201,32 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			{
 				_currentWsSetupModel = value;
 				_languageName = _currentWsSetupModel.CurrentLanguageName;
+			}
+		}
+
+		private void SetCurrentWsSetupModel(WritingSystemDefinition ws)
+		{
+			var setupModel = new WritingSystemSetupModel(ws);
+			if (ws.Language.Code == "en")
+			{
+				// Users cannot change the Special type of English WS's (LT-19728). Lock the Special type to whatever it is.
+				setupModel = new WritingSystemSetupModel(ws, setupModel.SelectionForSpecialCombo);
+			}
+			CurrentWsSetupModel = setupModel;
+			if (IsThePlainEnglish())
+			{
+				CurrentWsSetupModel.CurrentItemUpdated += PreventChangingPlainEnglish;
+			}
+		}
+
+		private void PreventChangingPlainEnglish(object sender, EventArgs args)
+		{
+			if (CurrentWsSetupModel.CurrentLanguageTag != "en")
+			{
+				ShowMessageBox("Bad user!", "Bad!");
+				_currentWs.Script = null; // new ScriptSubtag("");
+				_currentWs.Region = null; // new RegionSubtag("");
+				_currentWs.Variants.Clear();
 			}
 		}
 
@@ -258,17 +284,24 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			return WorkingList.Count > 1 && WorkingList.Last().WorkingWs != _currentWs;
 		}
 
-		// REVIEW (Hasso) 2019.05: CanMerge and CanDelete always return the same result. Can they be merged (or one deleted?)
 		/// <summary/>
 		public bool CanMerge()
 		{
-			return WorkingList.Count > 1 && !IsPlainEnglish();
+			return WorkingList.Count > 1 && !IsCurrentWsNew() && !IsPlainEnglish();
 		}
 
 		/// <summary/>
 		public bool CanDelete()
 		{
-			return WorkingList.Count > 1 && (_listType != ListType.Analysis || !IsPlainEnglish());
+			// The only remaining WS cannot be deleted from the list.
+			// Plain English is a required Analysis WS, but it can be removed from other lists.
+			return WorkingList.Count > 1 && (_listType != ListType.Analysis || !IsThePlainEnglish());
+		}
+
+		private bool IsThePlainEnglish()
+		{
+			var origWs = WorkingList[CurrentWritingSystemIndex].OriginalWs;
+			return origWs != null && origWs.LanguageTag == "en";
 		}
 
 		private bool IsPlainEnglish()
@@ -279,12 +312,25 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		/// <summary/>
 		public void SelectWs(string wsTag)
 		{
-			var oldWs = _currentWs;
-			_currentWs = WorkingList.First(ws => ws.WorkingWs.LanguageTag == wsTag).WorkingWs;
 			// didn't change, no-op
-			if (oldWs.LanguageTag == _currentWs.LanguageTag)
+			if (wsTag == _currentWs.LanguageTag)
 				return;
-			CurrentWsSetupModel = new WritingSystemSetupModel(_currentWs);
+			SelectWs(WorkingList.First(ws => ws.WorkingWs.LanguageTag == wsTag).WorkingWs);
+		}
+
+		/// <summary/>
+		public void SelectWs(int index)
+		{
+			// didn't change, no-op
+			if (index == CurrentWritingSystemIndex)
+				return;
+			SelectWs(WorkingList[index].WorkingWs);
+		}
+
+		private void SelectWs(CoreWritingSystemDefinition ws)
+		{
+			_currentWs = ws;
+			SetCurrentWsSetupModel(_currentWs);
 			OnCurrentWritingSystemChanged(this, EventArgs.Empty);
 		}
 
@@ -746,6 +792,11 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			return tempWs.OriginalWs == null;
 		}
 
+		private bool IsCurrentWsNew()
+		{
+			return IsNew(WorkingList[CurrentWritingSystemIndex]);
+		}
+
 		/// <summary/>
 		public List<WSMenuItemModel> GetAddMenuItems()
 		{
@@ -794,11 +845,11 @@ namespace SIL.FieldWorks.FwCoreDlgs
 				// If we are in the new language project dialog we do not need to track the merged writing systems
 				if (Cache != null)
 				{
-					_mergedWritingSystems[_currentWs] = mergeWithWsId;
+					_mergedWritingSystems[WorkingList[CurrentWritingSystemIndex].OriginalWs] = mergeWithWsId;
 				}
 				WorkingList.RemoveAt(CurrentWritingSystemIndex);
 				CurrentWsListChanged = true;
-				SelectWs(WorkingList.First().WorkingWs.LanguageTag);
+				SelectWs(WorkingList.First().WorkingWs);
 			}
 		}
 
@@ -810,17 +861,12 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			{
 				CurrentWsListChanged = true;
 			}
-			if (otherList.Contains(_currentWs) || WorkingList[CurrentWritingSystemIndex].OriginalWs == null)
+			if (otherList.Contains(_currentWs) || // will be hidden, not deleted
+				IsCurrentWsNew() || // it hasn't been created yet, so it has no data
+				ConfirmDeleteWritingSystem(CurrentWsSetupModel.CurrentDisplayLabel)) // prompt the user to delete the WS and its data
 			{
 				WorkingList.RemoveAt(CurrentWritingSystemIndex);
-				SelectWs(WorkingList.First().WorkingWs.LanguageTag);
-				return;
-			}
-
-			if (ConfirmDeleteWritingSystem(CurrentWsSetupModel.CurrentDisplayLabel))
-			{
-				WorkingList.RemoveAt(CurrentWritingSystemIndex);
-				SelectWs(WorkingList.First().WorkingWs.LanguageTag);
+				SelectWs(WorkingList.First().WorkingWs);
 			}
 		}
 
@@ -838,7 +884,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			// build a regex that will match an ipa input system for the current language
 			// and return if it is found in the list.
 			var languageCode = _currentWs.Language.Code;
-			var ipaMatch = $"^{languageCode}.*-fonipa.*";
+			var ipaMatch = $"^{languageCode}(-.*)?-fonipa.*";
 			return WorkingList.Exists(item => Regex.IsMatch(item.WorkingWs.LanguageTag, ipaMatch));
 		}
 
@@ -855,7 +901,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 				wsDef.Language = new LanguageSubtag(wsDef.Language, langInfo.DesiredName);
 				WorkingList.Insert(CurrentWritingSystemIndex + 1, new WSListItemModel(true, null, wsDef));
 				CurrentWsListChanged = true;
-				SelectWs(wsDef.LanguageTag);
+				SelectWs(wsDef);
 			}
 		}
 
@@ -879,7 +925,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			wsDef.Language = new LanguageSubtag(wsDef.Language, _currentWs.LanguageName);
 			WorkingList.Insert(CurrentWritingSystemIndex + 1, new WSListItemModel(true, null, wsDef));
 			CurrentWsListChanged = true;
-			SelectWs(wsDef.LanguageTag);
+			SelectWs(wsDef);
 		}
 
 		private void AddIpaHandler(object sender, EventArgs e)
@@ -904,7 +950,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			wsDef.Language = new LanguageSubtag(wsDef.Language, _currentWs.LanguageName);
 			WorkingList.Insert(CurrentWritingSystemIndex + 1, new WSListItemModel(true, null, wsDef));
 			CurrentWsListChanged = true;
-			SelectWs(wsDef.LanguageTag);
+			SelectWs(wsDef);
 		}
 
 		/// <summary/>

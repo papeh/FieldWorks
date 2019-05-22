@@ -32,6 +32,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		public void CanCreateModel()
 		{
 			var container = new TestWSContainer(new [] {"en"});
+			// ReSharper disable once ObjectCreationAsStatement
 			Assert.DoesNotThrow(() => new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular));
 		}
 
@@ -51,6 +52,64 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, testModel.CurrentWsSetupModel.SelectionForSpecialCombo);
 			testModel.SelectWs("en-Kore-US");
 			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.ScriptRegionVariant, testModel.CurrentWsSetupModel.SelectionForSpecialCombo);
+		}
+
+		[TestCase("fr-Latn-FR", WritingSystemSetupModel.SelectionsForSpecialCombo.None)]
+		[TestCase("en-Latn-US", WritingSystemSetupModel.SelectionsForSpecialCombo.ScriptRegionVariant)]
+		[TestCase("fr-Zxxx-x-audio", WritingSystemSetupModel.SelectionsForSpecialCombo.None)]
+		[TestCase("en-Zxxx-x-audio", WritingSystemSetupModel.SelectionsForSpecialCombo.Voice)]
+		[TestCase("fr-fonipa", WritingSystemSetupModel.SelectionsForSpecialCombo.None)]
+		[TestCase("en-fonipa", WritingSystemSetupModel.SelectionsForSpecialCombo.Ipa)]
+		public void SelectionForSpecialCombo_LockedForEnglish(string languageTag, WritingSystemSetupModel.SelectionsForSpecialCombo expected)
+		{
+			var container = new TestWSContainer(new[] { languageTag });
+			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
+			Assert.AreEqual(expected, testModel.CurrentWsSetupModel.LockedSpecialCombo);
+		}
+
+		[TestCase("{0}-Latn-US", WritingSystemSetupModel.SelectionsForSpecialCombo.ScriptRegionVariant)]
+		[TestCase("{0}-Zxxx-x-audio", WritingSystemSetupModel.SelectionsForSpecialCombo.Voice)]
+		[TestCase("{0}-fonipa", WritingSystemSetupModel.SelectionsForSpecialCombo.Ipa)]
+		public void SelectionForSpecialCombo_OnSwitch_LockedForEnglish(string languageTag, WritingSystemSetupModel.SelectionsForSpecialCombo expected)
+		{
+			var en = string.Format(languageTag, "en");
+			var de = string.Format(languageTag, "de");
+			var container = new TestWSContainer(new[] { en, de });
+			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
+			testModel.SelectWs(de);
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, testModel.CurrentWsSetupModel.LockedSpecialCombo);
+			testModel.SelectWs(en);
+			Assert.AreEqual(expected, testModel.CurrentWsSetupModel.LockedSpecialCombo);
+		}
+
+		[Test]
+		public void SelectionForSpecialCombo_LockedForDefaultEnglish()
+		{
+			var container = new TestWSContainer(new[] { "en", "de" });
+			var wssModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular)
+			{
+				ShowMessageBox = (t, c, b) => DialogResult.OK
+			}.CurrentWsSetupModel;
+			wssModel.CurrentScriptCode = "Cyrilic";
+			Assert.AreEqual("Latn", wssModel.CurrentScriptCode, "script code should be reset to Latin");
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, wssModel.SelectionForSpecialCombo, "script");
+			Assert.AreEqual("en", wssModel.CurrentLanguageTag, "script");
+			wssModel.CurrentRegion = "GB";
+			Assert.AreEqual("", wssModel.CurrentRegion, "region");
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, wssModel.SelectionForSpecialCombo, "region");
+			Assert.AreEqual("en", wssModel.CurrentLanguageTag, "region");
+			wssModel.CurrentIsVoice = true;
+			Assert.False(wssModel.CurrentIsVoice, "voice");
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, wssModel.SelectionForSpecialCombo, "voice");
+			Assert.AreEqual("en", wssModel.CurrentLanguageTag, "voice");
+			wssModel.CurrentIpaStatus = IpaStatusChoices.Ipa;
+			Assert.AreEqual(IpaStatusChoices.NotIpa, wssModel.CurrentIpaStatus);
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, wssModel.SelectionForSpecialCombo, "IPA");
+			Assert.AreEqual("en", wssModel.CurrentLanguageTag, "IPA");
+			wssModel.CurrentVariant = "x-xqax"; // or something like that
+			Assert.IsEmpty(wssModel.CurrentVariant, "Variants");
+			Assert.AreEqual(WritingSystemSetupModel.SelectionsForSpecialCombo.None, wssModel.SelectionForSpecialCombo, "Variants");
+			Assert.AreEqual("en", wssModel.CurrentLanguageTag, "Variants");
 		}
 
 		[Test]
@@ -275,6 +334,20 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			}
 		}
 
+		[Test]
+		public void WritingSystemList_CanMerge_CantMergeNewWs(
+			[Values(FwWritingSystemSetupModel.ListType.Analysis, FwWritingSystemSetupModel.ListType.Vernacular)]
+			FwWritingSystemSetupModel.ListType listType,
+			[Values("Audio", "dialect")] string variantType) // test only Audio and Dialect because IPA requires the Cache
+		{
+			var wss = new[] { "de" };
+			var container = new TestWSContainer(wss, wss);
+			var testModel = new FwWritingSystemSetupModel(container, listType);
+			var addMenuItems = testModel.GetAddMenuItems();
+			addMenuItems.First(item => item.MenuText.Contains(variantType)).ClickHandler.Invoke(this, new EventArgs());
+			Assert.AreEqual(false, testModel.CanMerge());
+		}
+
 		[TestCase(FwWritingSystemSetupModel.ListType.Analysis, "en", new[] { "fr", "en" }, false)] // Can't delete English from the Analysis list
 		[TestCase(FwWritingSystemSetupModel.ListType.Analysis, "en-GB", new[] { "en-GB", "en" }, true)] // Can delete variants of English
 		[TestCase(FwWritingSystemSetupModel.ListType.Analysis, "en-fonipa", new[] { "en-fonipa", "en" }, true)] // Can delete variants of English
@@ -290,6 +363,20 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var testModel = new FwWritingSystemSetupModel(container, type);
 			testModel.SelectWs(toRemove);
 			Assert.AreEqual(expectedResult, testModel.CanDelete());
+		}
+
+		[Test]
+		public void WritingSystemList_CanDelete_CanDeleteDuplicateEnglishAnalysis()
+		{
+			var wss = new[] { "en" };
+			var container = new TestWSContainer(wss, wss);
+			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Analysis);
+			var addMenuItems = testModel.GetAddMenuItems();
+			addMenuItems.First(item => item.MenuText.Contains("dialect")).ClickHandler.Invoke(this, new EventArgs());
+			Assert.AreEqual("en", testModel.CurrentWsSetupModel.CurrentLanguageTag);
+			Assert.AreEqual(true, testModel.CanDelete(), "should be able to delete the newly-created English [in]variant");
+			testModel.SelectWs(0);
+			Assert.AreEqual(false, testModel.CanDelete(), "should not be able to delete the original English");
 		}
 
 		[Test]
@@ -333,7 +420,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var container = new TestWSContainer(new[] { "en", "fr" });
 			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
 			var addMenuItems = testModel.GetAddMenuItems();
-			// Add an audio writing system because it currently doesn't require a cache to create properly
+			// Add an audio writing system because it doesn't currently require a cache to create properly
 			addMenuItems.First(item => item.MenuText.Contains("Audio")).ClickHandler.Invoke(this, new EventArgs());
 			testModel.SelectWs("en");
 			// SUT
@@ -365,7 +452,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var origEnIndex = testModel.CurrentWritingSystemIndex;
 			var addMenuItems = testModel.GetAddMenuItems();
 			// SUT
-			// Add an audio writing system because it currently doesn't require a cache to create properly
+			// Add a dialect writing system because it doesn't currently require a cache to create properly
 			addMenuItems.First(item => item.MenuText.Contains("dialect")).ClickHandler.Invoke(this, new EventArgs());
 			Assert.That(testModel.CurrentWritingSystemIndex, Is.Not.EqualTo(origEnIndex));
 			Assert.That(testModel.LanguageName, Is.StringMatching("Testing"));
@@ -379,7 +466,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var origEnIndex = testModel.CurrentWritingSystemIndex;
 			var addMenuItems = testModel.GetAddMenuItems();
 			// SUT
-			// Add an audio writing system because it currently doesn't require a cache to create properly
+			// Creating an IPA WS currently requires a Cache. Test "Create a new dialect"
 			addMenuItems.First(item => item.MenuText.Contains("dialect")).ClickHandler.Invoke(this, new EventArgs());
 			Assert.That(testModel.CurrentWritingSystemIndex, Is.EqualTo(origEnIndex + 1));
 		}
@@ -428,7 +515,6 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var container = new TestWSContainer(new[] { "es", "fr" });
 			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular, mockWsManager);
 			var enWs = container.VernacularWritingSystems.First();
-			testModel.ShowMessageBox = ShowMessageBox;
 			testModel.ShowChangeLanguage = ShowChangeLanguage;
 			testModel.ChangeLanguage();
 			testModel.Save();
@@ -575,7 +661,6 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			var container = new TestWSContainer(new[] { "fr", "fr-Arab", "fr-GB", "fr-fonipa", "es" });
 			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
 			testModel.SelectWs("fr-GB");
-			testModel.ShowMessageBox = ShowMessageBox;
 			testModel.ShowChangeLanguage = ShowChangeLanguage;
 			testModel.ChangeLanguage();
 			Assert.AreEqual("TestName", testModel.CurrentWsSetupModel.CurrentLanguageName);
@@ -591,15 +676,40 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		[Test]
 		public void ChangeLanguage_DoesNotChangeIfWouldCreateDuplicate()
 		{
-			var container = new TestWSContainer(new[] { "en", "en-GB", "en-fonipa", "auc" });
+			var container = new TestWSContainer(new[] { "es", "es-PR", "es-fonipa", "auc" });
+			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
+			testModel.SelectWs("es-PR");
+			string errorMessage = null;
+			testModel.ShowMessageBox = (text, caption, buttons) =>
+			{
+				errorMessage = text;
+				return DialogResult.OK;
+			};
+			testModel.ShowChangeLanguage = ShowChangeLanguage;
+			testModel.ChangeLanguage();
+			Assert.AreEqual("Spanish", testModel.CurrentWsSetupModel.CurrentLanguageName);
+			testModel.SelectWs("es");
+			Assert.AreEqual("Spanish", testModel.CurrentWsSetupModel.CurrentLanguageName);
+			StringAssert.Contains("writing system already exists", errorMessage);
+		}
+
+		[Test]
+		public void ChangeLanguage_DoesNotChangEnglish()
+		{
+			var container = new TestWSContainer(new[] { "en", "en-GB", "en-fonipa" });
 			var testModel = new FwWritingSystemSetupModel(container, FwWritingSystemSetupModel.ListType.Vernacular);
 			testModel.SelectWs("en-GB");
-			testModel.ShowMessageBox = ShowMessageBox;
+			string errorMessage = null;
+			testModel.ShowMessageBox = (text, caption, buttons) =>
+			{
+				errorMessage = text;
+				return DialogResult.OK;
+			};
 			testModel.ShowChangeLanguage = ShowChangeLanguage;
 			testModel.ChangeLanguage();
 			Assert.AreEqual("English", testModel.CurrentWsSetupModel.CurrentLanguageName);
-			testModel.SelectWs("en");
-			Assert.AreEqual("English", testModel.CurrentWsSetupModel.CurrentLanguageName);
+			Assert.AreEqual("en-GB", testModel.CurrentWsSetupModel.CurrentLanguageTag);
+			Assert.AreEqual(FwCoreDlgs.kstidCantChangeEnglishWS, errorMessage);
 		}
 
 		[Test]
@@ -614,7 +724,6 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			Cache.ActionHandlerAccessor.EndUndoTask();
 			var testModel = new FwWritingSystemSetupModel(langProj, FwWritingSystemSetupModel.ListType.Vernacular, wsManager, Cache);
 			testModel.SelectWs("fr");
-			testModel.ShowMessageBox = ShowMessageBox;
 			testModel.ShowChangeLanguage = ShowChangeLanguage;
 			testModel.ChangeLanguage();
 			Assert.AreEqual("TestName", testModel.CurrentWsSetupModel.CurrentLanguageName);
@@ -622,15 +731,11 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			Assert.AreEqual("auc", langProj.CurVernWss);
 		}
 
+		/// <summary>Simulates the user changing the language to Waorani "TestName" (auc)</summary>
 		private static bool ShowChangeLanguage(out LanguageInfo info)
 		{
 			info = new LanguageInfo { DesiredName = "TestName", ThreeLetterTag = "auc", LanguageTag = "auc" };
 			return true;
-		}
-
-		private static DialogResult ShowMessageBox(string text, string caption, MessageBoxButtons buttons)
-		{
-			return DialogResult.OK;
 		}
 
 		[Test]
@@ -828,6 +933,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 
 		/// <summary>
 		/// Proves that the merge option should work during the New Project Wizard use of this model/dialog
+		/// REVIEW (Hasso) 2019.05: why would a user want to merge WS's before a project is created?
 		/// </summary>
 		[Test]
 		public void CurrentWsListChanged_MergeSelected_SaveDoesNotCrashWithNoCache()

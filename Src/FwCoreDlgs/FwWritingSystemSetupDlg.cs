@@ -188,9 +188,20 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			foreach (var ws in model.WorkingList)
 			{
 				var label = ws.WorkingWs.DisplayLabel;
-				while (uniqueLabels.Contains(label))
+				if (uniqueLabels.Contains(label))
 				{
-					label += "(Copy)"; // TODO (Hasso) 2019.05: l10n, p14n
+					if (ws.OriginalWs != null && ws.OriginalWs.DisplayLabel == label)
+					{
+						label = string.Format(FwCoreDlgs.xOriginal, label);
+					}
+					else
+					{
+						do
+						{
+							label = string.Format(FwCoreDlgs.xCopy, label);
+						} while (uniqueLabels.Contains(label));
+					}
+
 				}
 				_writingSystemList.Items.Add(new WsListItem(label, ws.WorkingWs.LanguageTag), ws.InCurrentList);
 				uniqueLabels.Add(label);
@@ -337,7 +348,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		{
 			if (_model != null)
 			{
-				_model.SelectWs(((WsListItem)_writingSystemList.SelectedItem).Code);
+				_model.SelectWs(_writingSystemList.SelectedIndex);
 			}
 		}
 
@@ -367,8 +378,8 @@ namespace SIL.FieldWorks.FwCoreDlgs
 				{
 					_toolTip.SetToolTip(_writingSystemList, FwCoreDlgs.WritingSystemList_SelectAtLeastOneTooltip);
 					_wsListPanel.Refresh();
-					MessageBox.Show("You must select one writing system, and there should be no duplicates",
-						"Invalid writing system list", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+					MessageBox.Show("You must select at least one writing system, and there should be no duplicates",
+						"Invalid writing system list", MessageBoxButtons.OK, MessageBoxIcon.Exclamation); // TODO (hasso) 2019.05: l10n, distinct error mesages
 				}
 				if (!customDigits.AreAllDigitsValid())
 				{

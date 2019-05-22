@@ -1065,4 +1065,12 @@ Delete the existing relationship before trying to add this one again.</value>
     <value>Pick a different project name</value>
     <comment>This is the title for the dialog that is shown when the user has entered unsupported characters in the project name, or has entered the same name as another project</comment>
   </data>
+  <data name="xCopy" xml:space="preserve">
+    <value>{0} (Copy)</value>
+    <comment>{0} is an item in a list. It is a copy of another item in the list.</comment>
+  </data>
+  <data name="xOriginal" xml:space="preserve">
+    <value>{0} (Original)</value>
+    <comment>{0} is an item in a list. There is a copy of this item in the list.</comment>
+  </data>
 </root>

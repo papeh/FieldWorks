@@ -2403,5 +2403,23 @@ namespace SIL.FieldWorks.FwCoreDlgs {
                 return ResourceManager.GetString("WritingSystemList_SelectAtLeastOneTooltip", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (Copy).
+        /// </summary>
+        public static string xCopy {
+            get {
+                return ResourceManager.GetString("xCopy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (Original).
+        /// </summary>
+        public static string xOriginal {
+            get {
+                return ResourceManager.GetString("xOriginal", resourceCulture);
+            }
+        }
     }
 }
