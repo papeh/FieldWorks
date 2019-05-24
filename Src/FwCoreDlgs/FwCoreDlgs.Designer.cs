@@ -1265,20 +1265,20 @@ namespace SIL.FieldWorks.FwCoreDlgs {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You cannot change the full code &quot;{0}&quot; of the default user writing system..
+        ///   Looks up a localized string similar to You cannot change the code of this writing system to &quot;{0}&quot; because the &quot;{1}&quot; writing system already exists..
         /// </summary>
-        public static string kstidCantChangeUserWS {
+        public static string kstidCantCauseDuplicateWS {
             get {
-                return ResourceManager.GetString("kstidCantChangeUserWS", resourceCulture);
+                return ResourceManager.GetString("kstidCantCauseDuplicateWS", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &quot;{0}&quot; writing system already exists. To distinguish the new writing system you are creating from &quot;{0}&quot;, add script, region and/or variant information.{1}{1}Alternatively, remove this new writing system and use the existing writing system, &quot;{0}&quot;, if it meets your needs..
+        ///   Looks up a localized string similar to You cannot change the code &quot;en&quot; of the default writing system because it is used as a fallback when other writing systems are missing text..
         /// </summary>
-        public static string kstidCantCreateDuplicateWS {
+        public static string kstidCantChangeEnglishWS {
             get {
-                return ResourceManager.GetString("kstidCantCreateDuplicateWS", resourceCulture);
+                return ResourceManager.GetString("kstidCantChangeEnglishWS", resourceCulture);
             }
         }
         
@@ -1369,6 +1369,15 @@ namespace SIL.FieldWorks.FwCoreDlgs {
         public static string kstidDestFolderMustBeInLinkedFiles {
             get {
                 return ResourceManager.GetString("kstidDestFolderMustBeInLinkedFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &quot;{0}&quot; writing system already exists. To distinguish the new writing system you are creating from &quot;{0}&quot;, add script, region and/or variant information.{1}{1}Alternatively, remove this new writing system and use the existing writing system, &quot;{0}&quot;, if it meets your needs..
+        /// </summary>
+        public static string kstidDistinguishNewWS {
+            get {
+                return ResourceManager.GetString("kstidDistinguishNewWS", resourceCulture);
             }
         }
         
@@ -1762,15 +1771,6 @@ namespace SIL.FieldWorks.FwCoreDlgs {
         public static string kstidNoTokensFoundInFile {
             get {
                 return ResourceManager.GetString("kstidNoTokensFoundInFile", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Distinguish New Writing System.
-        /// </summary>
-        public static string kstidNwsCaption {
-            get {
-                return ResourceManager.GetString("kstidNwsCaption", resourceCulture);
             }
         }
         

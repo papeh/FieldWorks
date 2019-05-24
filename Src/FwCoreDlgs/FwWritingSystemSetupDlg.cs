@@ -190,7 +190,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 				var label = ws.WorkingWs.DisplayLabel;
 				while (uniqueLabels.Contains(label))
 				{
-					label += "(Copy)";
+					label += "(Copy)"; // TODO (Hasso) 2019.05: l10n, p14n
 				}
 				_writingSystemList.Items.Add(new WsListItem(label, ws.WorkingWs.LanguageTag), ws.InCurrentList);
 				uniqueLabels.Add(label);

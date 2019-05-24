@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using SilEncConverters40;
 using SIL.Code;
 using SIL.Extensions;
@@ -47,7 +48,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			set;
 		}
 		private CoreWritingSystemDefinition _currentWs;
-		private ListType _listType;
+		private readonly ListType _listType;
 		private readonly IWritingSystemManager _wsManager;
 		private string _languageName;
 		private WritingSystemSetupModel _currentWsSetupModel;
@@ -78,6 +79,9 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		public event EventHandler WritingSystemListUpdated;
 
 		/// <summary/>
+		public delegate DialogResult ShowMessageBoxDelegate(string text, string caption, MessageBoxButtons buttons = MessageBoxButtons.OK);
+
+		/// <summary/>
 		public delegate bool ChangeLanguageDelegate(out LanguageInfo info);
 
 		/// <summary/>
@@ -100,6 +104,9 @@ namespace SIL.FieldWorks.FwCoreDlgs
 
 		/// <summary/>
 		public delegate bool ChangeHomographWs(string newHomographWs);
+
+		/// <summary/>
+		public ShowMessageBoxDelegate ShowMessageBox = MessageBox.Show;
 
 		/// <summary/>
 		public ChangeLanguageDelegate ShowChangeLanguage;
@@ -155,7 +162,7 @@ namespace SIL.FieldWorks.FwCoreDlgs
 					throw new NotImplementedException();
 			}
 
-			_currentWs = WorkingList.FirstOrDefault().WorkingWs;
+			_currentWs = WorkingList.First().WorkingWs;
 			_listType = type;
 			_wsManager = wsManager;
 			CurrentWsSetupModel = new WritingSystemSetupModel(_currentWs);
@@ -251,16 +258,22 @@ namespace SIL.FieldWorks.FwCoreDlgs
 			return WorkingList.Count > 1 && WorkingList.Last().WorkingWs != _currentWs;
 		}
 
+		// REVIEW (Hasso) 2019.05: CanMerge and CanDelete always return the same result. Can they be merged (or one deleted?)
 		/// <summary/>
 		public bool CanMerge()
 		{
-			return WorkingList.Count > 1;
+			return WorkingList.Count > 1 && !IsPlainEnglish();
 		}
 
 		/// <summary/>
 		public bool CanDelete()
 		{
-			return WorkingList.Count > 1;
+			return WorkingList.Count > 1 && (_listType != ListType.Analysis || !IsPlainEnglish());
+		}
+
+		private bool IsPlainEnglish()
+		{
+			return CurrentWsSetupModel.CurrentLanguageTag == "en";
 		}
 
 		/// <summary/>
@@ -420,12 +433,18 @@ namespace SIL.FieldWorks.FwCoreDlgs
 		/// <summary/>
 		public void ChangeLanguage()
 		{
+			if (_currentWs.Language.Code == "en")
+			{
+				ShowMessageBox(FwCoreDlgs.kstidCantChangeEnglishWS, Title);
+				return;
+			}
 			LanguageInfo info;
 			if (ShowChangeLanguage(out info))
 			{
 				if (WorkingList.Exists(ws => ws.WorkingWs.LanguageTag == info.LanguageTag))
 				{
-					// RejectDuplicateLanguage();
+					ShowMessageBox(string.Format(FwCoreDlgs.kstidCantCauseDuplicateWS, info.LanguageTag, info.DesiredName),
+						FwCoreDlgs.ksWsAlreadyExists);
 					return;
 				}
 				var languagesToChange = new List<WSListItemModel>(WorkingList.Where(ws => ws.WorkingWs.LanguageName == _languageName));
