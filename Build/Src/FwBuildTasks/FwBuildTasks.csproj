@@ -109,6 +109,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="CatenateFiles.cs" />
     <Compile Include="FwBuildTasksTests\WxsToWxiTests.cs" />
     <Compile Include="LogMetadata.cs" />
     <Compile Include="WxsToWxi.cs" />
