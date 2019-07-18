@@ -235,9 +235,9 @@
 
 	<Target Name="createCompMaps" Condition="'$(OS)'=='Unix'">
 		<!--  IPictureFactory class and interface -->
-		<WriteTextFile TargetFile="$(dir-outputBase)/COMInterfaces.compmap"
-			FirstLine="17A2E876-2968-11E0-8046-0019DBF4566E libManagedComBridge.so COMInterfaces.dll SIL.FieldWorks.Common.COMInterfaces.ManagedPictureFactory"
-			SecondLine="110B7E88-2968-11E0-B493-0019DBF4566E libManagedComBridge.so"/>
+		<WriteLinesToFile File="$(dir-outputBase)/COMInterfaces.compmap" Overwrite="true"
+			Lines="17A2E876-2968-11E0-8046-0019DBF4566E libManagedComBridge.so COMInterfaces.dll SIL.FieldWorks.Common.COMInterfaces.ManagedPictureFactory;110B7E88-2968-11E0-B493-0019DBF4566E libManagedComBridge.so"/>
+		<Message Text="If you can read this, the WriteTextFile task is redundant to the built-in WriteLinesToFile task"/>
 		<!-- ViewInputManager class, ILgTextServices and IViewInputMgr interfaces -->
 		<WriteTextFile TargetFile="$(dir-outputBase)/SimpleRootSite.compmap"
 			FirstLine="830BAF1F-6F84-46EF-B63E-3C1BFDF9E83E libManagedComBridge.so SimpleRootSite.dll SIL.FieldWorks.Common.RootSites.ViewInputManager"

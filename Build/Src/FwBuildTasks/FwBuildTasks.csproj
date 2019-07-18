@@ -149,7 +149,6 @@
     <Compile Include="BuildUtils.cs" />
     <Compile Include="ForceDelete.cs" />
     <Compile Include="WriteRegistry.cs" />
-    <Compile Include="WriteTextFile.cs" />
     <Compile Include="Md5Checksum.cs" />
     <Compile Include="VerifyFilesIdentical.cs" />
     <Compile Include="Unitpp.cs" />
